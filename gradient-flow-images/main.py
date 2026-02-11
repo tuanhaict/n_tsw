@@ -221,7 +221,6 @@ def parse_args():
 
 def main():
     args = parse_args()
-    args.seeds = range(100)
     device = torch.device(f"cuda:{args.gpu}") if args.gpu >= 0 and torch.cuda.is_available() \
              else torch.device("cpu")
     for loss in args.losses:
