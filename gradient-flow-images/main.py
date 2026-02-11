@@ -56,8 +56,7 @@ def build_twd(d, device):
 def build_ntwd(d, device, noisy_mode=None, lambda_=0.0, p_noise=2):
     nlines, L_total = 2, 1000
     ntrees = L_total // nlines
-    twd = NTWConcurrentLines(ntrees=ntrees, nlines=nlines,
-                            mass_division="distance_based",
+    twd = NTWConcurrentLines(mass_division="distance_based",
                             device=device, p=1, delta=0.1, noisy_mode=noisy_mode, lambda_=lambda_, p_noise=p_noise)
     return twd, nlines, L_total, ntrees
 
