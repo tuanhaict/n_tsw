@@ -3,7 +3,7 @@ import torch
 from db_tsw.utils import generate_trees_frames
 
 class NTWConcurrentLines():
-    def __init__(self, p=2, delta=2, mass_division='distance_based', device="cuda", noisy_mode=None):
+    def __init__(self, p=2, delta=2, mass_division='distance_based', device="cuda", noisy_mode=None, lambda_=0.0):
         """
         Class for computing the Tree Wasserstein distance between two distributions.
         Args:
@@ -17,6 +17,7 @@ class NTWConcurrentLines():
         self.delta = delta
         self.mass_division = mass_division
         self.noisy_mode = noisy_mode
+        self.lambda_ = lambda_
 
         assert self.mass_division in ['uniform', 'distance_based'], \
             "Invalid mass division. Must be one of 'uniform', 'distance_based'"
