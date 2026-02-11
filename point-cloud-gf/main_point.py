@@ -27,7 +27,7 @@ import torch.multiprocessing as mp
 
 from utils import SW, compute_true_Wasserstein  # utils.py
 from tsw import TWConcurrentLines, generate_trees_frames  # Treed SW implementation
-
+from n_tsw import NTWConcurrentLines  # n-TSW implementation
 # ------------------------------ default hyper‑parameters -----------------------------------------
 DEFAULT_LOSS_TYPES: List[str] = [
     "sw",        # sliced Wasserstein
@@ -78,17 +78,35 @@ def build_twd_obj(device: torch.device) -> TWConcurrentLines:
         nlines=NLINES,
         mass_division="distance_based",
         device=device,
-        p=2,
+        p=1,
         delta=10,
     )
     return obj
 
+def build_ntwd_obj(device: torch.device, noisy_mode=None, lambda_=0.0, p_noise=2) -> NTWConcurrentLines:
+    """Return a *plain* n‑TSW object (no `torch.compile`).
 
+    `torch.compile` spawns its own background compilation pool, which is forbidden
+    inside multiprocessing *daemon* workers and triggers the
+    "daemonic processes are not allowed to have children" assertion you saw.
+    Using the raw module avoids that issue while having negligible impact on
+    these small point‑cloud models.
+    """
+    obj = NTWConcurrentLines(
+        p=1,
+        delta=10,
+        mass_division="distance_based",
+        device=device,
+        noisy_mode=noisy_mode,
+        lambda_=lambda_,
+        p_noise=p_noise
+    )
+    return obj
 def loss_fn(
     loss_type: str,
     X: torch.Tensor,
     Y: torch.Tensor,
-    twd_obj: TWConcurrentLines | None,
+    twd_obj: TWConcurrentLines | None | NTWConcurrentLines,
     step: int,
 ) -> torch.Tensor:
     if loss_type == "sw":
@@ -111,6 +129,9 @@ def loss_fn(
     if loss_type.startswith("fw_"):
         theta, intercept = generate_trees_frames(
             intercept_mode="geometric_median", gen_mode=gen_mode, **common)
+    elif loss_type.startswith("n_tsw"):
+        theta, intercept = generate_trees_frames(
+            mean=mean_local, gen_mode=gen_mode, **common)        
     else:
         theta, intercept = generate_trees_frames(
             mean=mean_local, gen_mode=gen_mode, **common)
@@ -119,7 +140,7 @@ def loss_fn(
 
 # --------------------------------------------------------------------------------------------------
 
-def run_one(loss_type: str, lr: float, gpu_id: int, data_path: str) -> None:
+def run_one(args, loss_type: str, lr: float, gpu_id: int, data_path: str) -> None:
     """Worker: run one (loss, lr, seed) combo on the chosen GPU."""
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -140,7 +161,7 @@ def run_one(loss_type: str, lr: float, gpu_id: int, data_path: str) -> None:
         Y = torch.tensor(arr[IND_TARGET], device=device)
         X = torch.tensor(arr[IND_SOURCE], requires_grad=True, device=device)
         N = Y.shape[0]
-        twd_obj = None if loss_type == "sw" else build_twd_obj(device)
+        twd_obj = None if loss_type == "sw" else build_ntwd_obj(device, noisy_mode=args.noisy_mode, lambda_=args.lambda_, p_noise=args.p_noise) if loss_type.startswith("n_tsw") else build_twd_obj(device)
         opt = torch.optim.Adam([X], lr=lr)
 
         traj, dists, times = [], [], []
@@ -194,6 +215,12 @@ def parse_args() -> argparse.Namespace:
                    help="GPUs to use (default: all visible GPUs)")
     p.add_argument("--runs_per_gpu", type=int, default=1,
                    help="Number of runs per GPU")
+    p.add_argument("--noisy_mode", type=str, default=None,
+                   help="Type of noise regularization for n-TSW: None | interval | ball")
+    p.add_argument("--lambda_", type=float, default=0.0,
+                   help="Regularization strength for n-TSW")
+    p.add_argument("--p_noise", type=int, default=2,
+                   help="Dual norm exponent for noise regularization in n-TSW")
     return p.parse_args()
 
 # --------------------------------------------------------------------------------------------------
@@ -208,7 +235,7 @@ def main() -> None:
     if not args.parallel:
         devs = args.gpus if args.gpus is not None else [0]
         for idx, (loss, lr) in enumerate(combos):
-            run_one(loss, lr, devs[idx % len(devs)], args.data)
+            run_one(args, loss, lr, devs[idx % len(devs)], args.data)
         return
 
     # ---------- parallel with spawn -------------------------------------------------------
@@ -222,7 +249,9 @@ def main() -> None:
 
     devs = devs * args.runs_per_gpu
 
-    tasks = [(*combo, devs[i % len(devs)], args.data) for i, combo in enumerate(combos)]
+    tasks = [(args, *combo, devs[i % len(devs)], args.data)
+         for i, combo in enumerate(combos)]
+
 
     print(f"Launching {len(tasks)} runs on GPUs {devs} (spawn context)")
     ctx = mp.get_context("spawn")
