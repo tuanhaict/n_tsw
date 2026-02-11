@@ -34,6 +34,7 @@ sys.path.append("./src")          # ensure src/ot.py etc. are importable
 # ---------- Wasserstein losses ----------
 from src.ot import SW
 from src.TW_concurrent_lines import TWConcurrentLines, generate_trees_frames
+from src.n_tsw import NTWConcurrentLines
 
 # ---------- helpers ---------------------
 def ensure_dirs(*ds): [Path(d).mkdir(parents=True, exist_ok=True) for d in ds]
@@ -51,6 +52,13 @@ def build_twd(d, device):
     twd = TWConcurrentLines(ntrees=ntrees, nlines=nlines,
                             mass_division="distance_based",
                             device=device, p=1, delta=0.1)
+    return twd, nlines, L_total, ntrees
+def build_ntwd(d, device, noisy_mode=None, lambda_=0.0, p_noise=2):
+    nlines, L_total = 2, 1000
+    ntrees = L_total // nlines
+    twd = NTWConcurrentLines(ntrees=ntrees, nlines=nlines,
+                            mass_division="distance_based",
+                            device=device, p=1, delta=0.1, noisy_mode=noisy_mode, lambda_=lambda_, p_noise=p_noise)
     return twd, nlines, L_total, ntrees
 
 # ---------- synthetic digit renderer -----
@@ -156,6 +164,7 @@ def run_once(args, loss_type, lr, seed, device):
 
     # ---------- loss objects --------------------------------------------
     twd, nlines, L_total, ntrees = build_twd(D, device)
+    ntwd, nlines, L_total, ntrees = build_ntwd(D, device, noisy_mode=args.noisy_mode, lambda_=args.lambda_, p_noise=args.p_noise)
     def loss_fn(step):
         if loss_type == "sw":
             return SW(X_full, Y_full, L=L_total, p=2, device=device)
@@ -164,6 +173,11 @@ def run_once(args, loss_type, lr, seed, device):
         common = dict(ntrees=ntrees, nlines=nlines, d=D, std=0.001,
                       device=device, kappa=kappa if loss_type.endswith("_rp") else None,
                       X=X_full.detach(), Y=Y_full.detach())
+        if loss_type.startswith("n_tsw"):
+            th, ic = generate_trees_frames(mean=Y_full.mean(0),
+                                           gen_mode="random_path" if loss_type.endswith("_rp")
+                                           else "gaussian_raw", **common)
+            return ntwd(X_full, Y_full, th, ic)
         if loss_type.startswith("fw_"):
             th, ic = generate_trees_frames(intercept_mode="geometric_median",
                                            gen_mode="random_path" if loss_type.endswith("_rp")
