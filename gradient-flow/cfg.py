@@ -77,6 +77,11 @@ def parse_args():
         type=float,
         default=0.0,
         help='regularization parameter for noisy NTWD')
+    parser.add_argument(
+        '--p_noise',
+        type=int,
+        default=2,
+        help='p for noise ball in noisy NTWD')
 
     opt = parser.parse_args()
     return opt
