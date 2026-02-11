@@ -47,14 +47,14 @@ def sinusoid(idx: torch.Tensor, dim: int, base: float = 10000.0):
     return torch.cat([torch.sin(angles), torch.cos(angles)], 1)
 
 def build_twd(d, device):
-    nlines, L_total = 2, 1000
+    nlines, L_total = 4, 1000
     ntrees = L_total // nlines
     twd = TWConcurrentLines(ntrees=ntrees, nlines=nlines,
                             mass_division="distance_based",
                             device=device, p=1, delta=0.1)
     return twd, nlines, L_total, ntrees
 def build_ntwd(d, device, noisy_mode=None, lambda_=0.0, p_noise=2):
-    nlines, L_total = 2, 1000
+    nlines, L_total = 4, 1000
     ntrees = L_total // nlines
     twd = NTWConcurrentLines(mass_division="distance_based",
                             device=device, p=1, delta=0.1, noisy_mode=noisy_mode, lambda_=lambda_, p_noise=p_noise)
