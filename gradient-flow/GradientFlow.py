@@ -158,7 +158,20 @@ for k, title in enumerate(titles):
                     gen_mode='gaussian_raw',
                     device='cuda'
                 )  # distance_based
-                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode=args.noisy_mode)
+                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="interval")
+                end_time = time.time()  # End timing
+            elif k == 7:
+                start_time = time.time()  # Start timing
+                theta_twd, intercept_twd = generate_trees_frames(
+                    ntrees=int(args.L / args.n_lines),
+                    nlines=args.n_lines,
+                    d=X.shape[1],
+                    mean=mean_X,
+                    std=args.std,
+                    gen_mode='gaussian_raw',
+                    device='cuda'
+                )  # distance_based
+                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="ball")
                 end_time = time.time()  # End timing
                 # print(f"Time taken for TWD distance based: {end_time - start_time:.4f} seconds")
             optimizer.zero_grad()
