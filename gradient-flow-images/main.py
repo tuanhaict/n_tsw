@@ -231,6 +231,12 @@ def parse_args():
     p.add_argument("--perm_seed", type=int, default=0,
                    help="Seed for the initial shuffle of image features")
     p.add_argument("--gpu", type=int, default=0)
+    p.add_argument("--noisy_mode", type=str, default=None,
+                   help="Type of noise regularization for n-TSW: None | interval | ball")
+    p.add_argument("--lambda_", type=float, default=0.0,
+                   help="Regularization strength for n-TSW")
+    p.add_argument("--p_noise", type=int, default=2,
+                   help="Dual norm exponent for noise regularization in n-TSW")
     return p.parse_args()
 
 def main():
