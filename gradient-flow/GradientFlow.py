@@ -33,8 +33,8 @@ for i, seed in enumerate(seeds):
     N = 100  # Number of samples from p_X
     Xs.append(load_data(name=dataset_name, n_samples=N, dim=2))
     Xs[i] -= Xs[i].mean(dim=0)[np.newaxis, :]  # Normalization
-lear_rates = [args.lr_sw, args.lr_tsw_sl, args.lr_tsw_sl, args.lr_tsw_sl, args.lr_sw, args.lr_sw, args.lr_sw, args.lr_sw]
-n_projs = [args.L, int(args.L / args.n_lines), int(args.L / args.n_lines), int(args.L / args.n_lines), args.L, args.L, args.L, args.L]
+lear_rates = [args.lr_sw, args.lr_tsw_sl, args.lr_tsw_sl, args.lr_tsw_sl, args.lr_sw, args.lr_sw, args.lr_tsw_sl, args.lr_tsw_sl]
+n_projs = [args.L, int(args.L / args.n_lines), int(args.L / args.n_lines), int(args.L / args.n_lines), args.L, args.L, int(args.L / args.n_lines), int(args.L / args.n_lines)]
 
 
 for k, title in enumerate(titles):
@@ -158,7 +158,7 @@ for k, title in enumerate(titles):
                     gen_mode='gaussian_raw',
                     device='cuda'
                 )  # distance_based
-                loss += gradient_flow.TWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="interval", lambda_=args.lambda_)
+                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="interval", lambda_=args.lambda_)
                 end_time = time.time()  # End timing
             optimizer.zero_grad()
             loss.backward()

@@ -3,7 +3,7 @@ import torch
 from db_tsw.utils import generate_trees_frames
 
 class TWConcurrentLines():
-    def __init__(self, p=2, delta=2, mass_division='distance_based', device="cuda", noisy_mode=None, lambda_=0.0):
+    def __init__(self, p=2, delta=2, mass_division='distance_based', device="cuda"):
         """
         Class for computing the Tree Wasserstein distance between two distributions.
         Args:
@@ -16,9 +16,6 @@ class TWConcurrentLines():
         self.p = p
         self.delta = delta
         self.mass_division = mass_division
-        self.noisy_mode = noisy_mode
-        self.lambda_ = lambda_
-
         assert self.mass_division in ['uniform', 'distance_based'], \
             "Invalid mass division. Must be one of 'uniform', 'distance_based'"
 
@@ -64,16 +61,12 @@ class TWConcurrentLines():
         # compute edge length
         edge_length = coord_sorted_with_root[:, :, 1:] - coord_sorted_with_root[:, :, :-1]
 
-        edge_length_eff = edge_length
-        if self.noisy_mode == 'interval' and self.lambda_ != 0.0:
-            edge_length_eff = edge_length + self.lambda_
+        # compute TW distance
+        subtract_mass = (torch.abs(sub_mass_target_cumsum) ** self.p) * edge_length
+        subtract_mass_sum = torch.sum(subtract_mass, dim=[-1,-2])
+        tw = torch.mean(subtract_mass_sum) ** (1/self.p)
 
-        abs_mass = torch.abs(sub_mass_target_cumsum)
-        subtract_mass = (abs_mass ** self.p) * edge_length_eff
-        subtract_mass_sum = torch.sum(subtract_mass, dim=[-1, -2])
-        tw = torch.mean(subtract_mass_sum) ** (1 / self.p)
-
-        return tw, sub_mass_target_cumsum, edge_length_eff
+        return tw, sub_mass_target_cumsum, edge_length
 
 
     def get_mass_and_coordinate(self, X, Y, theta, intercept):
