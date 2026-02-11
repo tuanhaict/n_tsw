@@ -72,6 +72,11 @@ def parse_args():
         type=str,
         default=None,
         help='noisy mode for NTWD, could be one of [interval, ball]')
+    parser.add_argument(
+        '--lambda_',
+        type=float,
+        default=0.0,
+        help='regularization parameter for noisy NTWD')
 
     opt = parser.parse_args()
     return opt

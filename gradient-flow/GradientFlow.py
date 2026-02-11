@@ -158,7 +158,7 @@ for k, title in enumerate(titles):
                     gen_mode='gaussian_raw',
                     device='cuda'
                 )  # distance_based
-                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="interval")
+                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="interval", lambda_=args.lambda_)
                 end_time = time.time()  # End timing
             elif k == 7:
                 start_time = time.time()  # Start timing
@@ -171,7 +171,7 @@ for k, title in enumerate(titles):
                     gen_mode='gaussian_raw',
                     device='cuda'
                 )  # distance_based
-                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="ball")
+                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="ball", lambda_=args.lambda_)
                 end_time = time.time()  # End timing
                 # print(f"Time taken for TWD distance based: {end_time - start_time:.4f} seconds")
             optimizer.zero_grad()
