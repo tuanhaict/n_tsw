@@ -199,13 +199,13 @@ class GF():
             return torch.matmul(X,theta.t())
         
 
-def TWD(X, Y, theta, intercept, mass_division = 'distance_based', p = 2, delta = 2., device = 'cuda'):
+def TWD(X, Y, theta, intercept, mass_division = 'distance_based', p = 2, delta = 2., device = 'cuda', noisy_mode=None, lambda_=0.0):
     # print(p)
     # print(delta)
     # exit()
     L = theta.shape[0]
     nlines = theta.shape[1]
-    TWD_obj = TWConcurrentLines(p=p, delta=delta, mass_division=mass_division, device=device)
+    TWD_obj = TWConcurrentLines(p=p, delta=delta, mass_division=mass_division, device=device, noisy_mode=noisy_mode, lambda_=lambda_)
     return TWD_obj(X, Y, theta, intercept)
 def NTWD(X, Y, theta, intercept, mass_division = 'distance_based', p = 2, delta = 2., device = 'cuda', noisy_mode=None, lambda_=0.0):
     # print(p)
