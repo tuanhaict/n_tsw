@@ -36,7 +36,7 @@ class Options:
 
     gpus: Tuple[int] = (0,)
     n_function: str = "power"  # Options: power, exp, exp_squared, linear
-    noise_mode: str = None  # Options: None, 'interval', 'gaussian'
+    noisy_mode: str = None  # Options: None, 'interval', 'ball'
     lambda_: float = 0.0
     p_noise: int = 2
 
@@ -49,6 +49,7 @@ def train_eval(opt: Options):
         f"_unif_w_{opt.unif_w}_align_w_{opt.align_w}"
         f"_lr_{opt.lr}_momentum_{opt.momentum}_seed_{opt.seed}_weight_decay_{opt.weight_decay}"
         f"_n_function_{opt.n_function}"
+        f"_noisy_mode_{opt.noisy_mode}_lambda_{opt.lambda_}_p_noise_{opt.p_noise}"
         + (opt.identifier if opt.identifier is not None else "")
     )
 
@@ -85,6 +86,9 @@ def train_eval(opt: Options):
         weight_decay=opt.weight_decay,
         gpus=opt.gpus,
         n_function=opt.n_function,
+        noisy_mode=opt.noisy_mode,
+        lambda_=opt.lambda_,
+        p_noise=opt.p_noise,
     )
 
     pretrain_start = time.time()
