@@ -243,8 +243,8 @@ def pretrain(opt: Options):
         y0 = F.normalize(y0, p=2, dim=-1)
 
         unif_loss_val = (
-            stswd(x, x0, ntrees=opt.ntrees, nlines=opt.nlines, p=2, delta=opt.delta, device=x.device) + 
-            stswd(y, y0, ntrees=opt.ntrees, nlines=opt.nlines, p=2, delta=opt.delta, device=x.device)
+            stswd(x, x0, ntrees=opt.ntrees, nlines=opt.nlines, p=opt.p, delta=opt.delta, device=x.device) + 
+            stswd(y, y0, ntrees=opt.ntrees, nlines=opt.nlines, p=opt.p, delta=opt.delta, device=x.device)
         ) / 2
         return align_loss_val, unif_loss_val
 
