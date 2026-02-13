@@ -17,6 +17,7 @@ class NTWConcurrentLines():
         self.noisy_mode = noisy_mode
         self.lambda_ = lambda_
         self.p_noise = p_noise
+        self.p_agg = 2
 
         assert self.mass_division in ['uniform', 'distance_based'], \
             "Invalid mass division. Must be one of 'uniform', 'distance_based'"
