@@ -24,6 +24,7 @@ class NSTSD():
         self.noisy_mode = noisy_mode
         self.lambda_ = lambda_
         self.p_noise = p_noise
+        self.p_agg = 2
         if type not in ["normal", "generalized"]:
             raise ValueError("type should be either normal or generalized")
         self.type = type
@@ -73,20 +74,20 @@ class NSTSD():
         edge_length = edge_length.unsqueeze(1) #(ntrees, 1, 2*npoints)
 
         # compute TW distance
+        abs_mass = torch.abs(sub_mass_target_cumsum)
         if self.noisy_mode == 'interval':
             edge_length = edge_length + self.lambda_
-
-        abs_mass = torch.abs(sub_mass_target_cumsum)
-        subtract_mass = (abs_mass ** self.p) * edge_length
-        subtract_mass_sum = torch.sum(subtract_mass, dim=-1)
+        subtract_mass = abs_mass * edge_length
+        subtract_mass_sum = torch.sum(subtract_mass, dim=[-1, -2])   # S_t
 
         if self.noisy_mode == 'ball':
             p_conj = self.p_noise / (self.p_noise - 1)
-            robust_penalty = self.lambda_ * torch.norm(abs_mass, p=p_conj, dim=-1)
+            h_vec = abs_mass.reshape(abs_mass.shape[0], -1)
+            robust_penalty = self.lambda_ * torch.norm(h_vec, p=p_conj, dim=-1)
+
             subtract_mass_sum = subtract_mass_sum + robust_penalty
 
-        subtract_mass_sum = torch.sum(subtract_mass_sum, dim=-1)
-        tw = torch.mean(subtract_mass_sum) ** (1 / self.p)
+        tw = (subtract_mass_sum.pow(self.p_agg).mean()).pow(1/self.p_agg)
 
         return tw, sub_mass_target_cumsum, edge_length
 
