@@ -122,7 +122,7 @@ class NSTSD():
         # project input on great circle.
         input_alpha = root @ input.T #(ntrees, 1, N)
         input_pc = input - input_alpha.transpose(1, 2) @ root #(ntrees, N, d)
-        input_pc = F.normalize(input_pc, p=2, dim=-1)
+        input_pc = F.normalize(input_pc, p=2, dim=-1, eps=1e-8)
          
         ## get axis_coordinate 
         # coord based on distance from root to projections
