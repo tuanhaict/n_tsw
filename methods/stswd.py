@@ -21,6 +21,7 @@ class STSWD():
         self.delta = delta
         self.device = device
         self.eps = 1e-6
+        self.p_agg = 2
         if type not in ["normal", "generalized"]:
             raise ValueError("type should be either normal or generalized")
         self.type = type
@@ -67,9 +68,9 @@ class STSWD():
         edge_length = edge_length.unsqueeze(1) #(ntrees, 1, 2*npoints)
 
         # compute TW distance
-        subtract_mass = (torch.abs(sub_mass_target_cumsum) ** self.p) * edge_length
+        subtract_mass = (torch.abs(sub_mass_target_cumsum)) * edge_length
         subtract_mass_sum = torch.sum(subtract_mass, dim=[-1,-2])
-        tw = torch.mean(subtract_mass_sum) ** (1/self.p)
+        tw = (subtract_mass_sum.pow(self.p_agg).mean()).pow(1/self.p_agg)
 
         return tw, sub_mass_target_cumsum, edge_length
 
