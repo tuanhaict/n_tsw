@@ -39,6 +39,7 @@ class Options:
     noisy_mode: str = None  # Options: None, 'interval', 'ball'
     lambda_: float = 0.0
     p_noise: int = 2
+    p_agg: float = 2.0
 
 
 def train_eval(opt: Options):
@@ -89,6 +90,7 @@ def train_eval(opt: Options):
         noisy_mode=opt.noisy_mode,
         lambda_=opt.lambda_,
         p_noise=opt.p_noise,
+        p_agg=opt.p_agg
     )
 
     pretrain_start = time.time()

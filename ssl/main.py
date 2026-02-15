@@ -66,6 +66,7 @@ class Options:
     noisy_mode: str = None  # Options: None, 'interval', 'ball'
     lambda_: float = 0.0
     p_noise: float = 2
+    p_agg: float = 2.0
 
 
 def prepare_loader(opt: Options) -> DataLoader:
@@ -301,8 +302,8 @@ def pretrain(opt: Options):
         y0 = F.normalize(y0, p=2, dim=-1)
 
         unif_loss_val = (
-            nsts(x, x0, ntrees=opt.ntrees, nlines=opt.nlines, p=opt.p, delta=opt.delta, device=x.device, noisy_mode=opt.noisy_mode, lambda_=opt.lambda_, p_noise=opt.p_noise) + 
-            nsts(y, y0, ntrees=opt.ntrees, nlines=opt.nlines, p=opt.p, delta=opt.delta, device=x.device, noisy_mode=opt.noisy_mode, lambda_=opt.lambda_, p_noise=opt.p_noise)
+            nsts(x, x0, ntrees=opt.ntrees, nlines=opt.nlines, p=opt.p, delta=opt.delta, device=x.device, noisy_mode=opt.noisy_mode, lambda_=opt.lambda_, p_noise=opt.p_noise, p_agg=opt.p_agg) + 
+            nsts(y, y0, ntrees=opt.ntrees, nlines=opt.nlines, p=opt.p, delta=opt.delta, device=x.device, noisy_mode=opt.noisy_mode, lambda_=opt.lambda_, p_noise=opt.p_noise, p_agg=opt.p_agg)
         ) / 2
         return align_loss_val, unif_loss_val
     def simclr_loss(x, y):

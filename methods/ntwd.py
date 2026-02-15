@@ -4,7 +4,7 @@ from torch.distributions import MultivariateNormal
 from utils.func import transform
 
 class NSTSD():
-    def __init__(self, ntrees=200, nlines=5, p=2, delta=2, device="cuda", type="normal", noisy_mode=None, lambda_=0.0, p_noise=2):
+    def __init__(self, ntrees=200, nlines=5, p=2, delta=2, device="cuda", type="normal", noisy_mode=None, lambda_=0.0, p_noise=2, p_agg=2):
         """
         Class for computing the TW distance between two point clouds
         Args:
@@ -24,7 +24,7 @@ class NSTSD():
         self.noisy_mode = noisy_mode
         self.lambda_ = lambda_
         self.p_noise = p_noise
-        self.p_agg = 2
+        self.p_agg = p_agg
         if type not in ["normal", "generalized"]:
             raise ValueError("type should be either normal or generalized")
         self.type = type
@@ -157,8 +157,8 @@ def unif_hypersphere(shape, device):
     samples = F.normalize(samples, p=2, dim=-1)
     return samples
 
-def nsts(X, Y, ntrees=250, nlines=4, p=2, delta=2, device='cuda', type='normal', noisy_mode=None, lambda_=0.0, p_noise=2):
-    TW_obj = NSTSD(ntrees=ntrees, nlines=nlines, p=p, delta=delta, device=device, type=type, noisy_mode=noisy_mode, lambda_=lambda_, p_noise=p_noise)
+def nsts(X, Y, ntrees=250, nlines=4, p=2, delta=2, device='cuda', type='normal', noisy_mode=None, lambda_=0.0, p_noise=2, p_agg=2):
+    TW_obj = NSTSD(ntrees=ntrees, nlines=nlines, p=p, delta=delta, device=device, type=type, noisy_mode=noisy_mode, lambda_=lambda_, p_noise=p_noise, p_agg=p_agg)
     stswd = TW_obj(X, Y)
     return stswd
 

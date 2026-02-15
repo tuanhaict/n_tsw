@@ -221,6 +221,8 @@ def parse_args() -> argparse.Namespace:
                    help="Regularization strength for n-TSW")
     p.add_argument("--p_noise", type=int, default=2,
                    help="Dual norm exponent for noise regularization in n-TSW")
+    p.add_argument("--p_agg", type=float, default=2.0,
+                   help="Aggregation exponent for n-TSW loss")
     return p.parse_args()
 
 # --------------------------------------------------------------------------------------------------

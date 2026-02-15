@@ -82,6 +82,10 @@ def parse_args():
         type=int,
         default=2,
         help='p for noise ball in noisy NTWD')
-
+    parser.add_argument(
+        '--p_agg',
+        type=float,
+        default=2.0,
+        help='p for aggregation in NTWD')
     opt = parser.parse_args()
     return opt
