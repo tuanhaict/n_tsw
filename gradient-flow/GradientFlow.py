@@ -18,7 +18,8 @@ dataset_name = args.dataset_name
 nofiterations = args.num_iter
 seeds = range(1,args.num_seeds+1)
 modes = ['linear', 'linear', 'linear', 'linear', 'linear', 'linear', 'linear', 'linear']
-titles = ['SW', 'TSW-SL-distance-based', 'TSW-SL-uniform', 'TSW-SL-orthorgonal', 'LCVSW', 'SWGG', 'TWD-noisy-interval', 'TWD-noisy-ball']
+# titles = ['SW', 'TSW-SL-distance-based', 'TSW-SL-uniform', 'TSW-SL-orthorgonal', 'LCVSW', 'SWGG', 'TWD-noisy-interval', 'TWD-noisy-ball']
+titles = ['NTWD-noisy-interval', 'TWD-distance-based', 'TWD-uniform', 'TWD-orthogonal', 'NTWD-noisy-ball']
 colors = ['blue', 'orange', 'red', 'green', 'purple', 'brown', 'cyan', 'magenta']
 
 # Arrays to store results
@@ -33,8 +34,8 @@ for i, seed in enumerate(seeds):
     N = 100  # Number of samples from p_X
     Xs.append(load_data(name=dataset_name, n_samples=N, dim=2))
     Xs[i] -= Xs[i].mean(dim=0)[np.newaxis, :]  # Normalization
-lear_rates = [args.lr_sw, args.lr_tsw_sl, args.lr_tsw_sl, args.lr_tsw_sl, args.lr_sw, args.lr_sw, args.lr_tsw_sl, args.lr_tsw_sl, args.lr_tsw_sl]
-n_projs = [args.L, int(args.L / args.n_lines), int(args.L / args.n_lines), int(args.L / args.n_lines), args.L, args.L, int(args.L / args.n_lines), int(args.L / args.n_lines), int(args.L / args.n_lines)]
+lear_rates = [args.lr_tsw_sl, args.lr_tsw_sl, args.lr_tsw_sl, args.lr_tsw_sl, args.lr_tsw_sl, args.lr_sw, args.lr_tsw_sl, args.lr_tsw_sl, args.lr_tsw_sl]
+n_projs = [int(args.L / args.n_lines), int(args.L / args.n_lines), int(args.L / args.n_lines), int(args.L / args.n_lines), int(args.L / args.n_lines), args.L, int(args.L / args.n_lines), int(args.L / args.n_lines), int(args.L / args.n_lines)]
 
 
 for k, title in enumerate(titles):
@@ -86,8 +87,17 @@ for k, title in enumerate(titles):
 
             if k == 0:
                 start_time = time.time()  # Start timing
-                loss += gsw_res.sw(X.to(device), Y, theta=None)
-                end_time = time.time()  # End timing
+                theta_twd, intercept_twd = generate_trees_frames(
+                    ntrees=int(args.L / args.n_lines),
+                    nlines=args.n_lines,
+                    d=X.shape[1],
+                    mean=mean_X,
+                    std=args.std,
+                    gen_mode='gaussian_orthogonal',
+                    device='cuda'
+                )  # distance_based
+                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="interval", lambda_=args.lambda_, p_agg=args.p_agg)
+                end_time = time.time() 
                 # print(f"Time taken for SW: {end_time - start_time:.4f} seconds")
 
             elif k == 1:
@@ -137,7 +147,16 @@ for k, title in enumerate(titles):
 
             elif k == 4:
                 start_time = time.time()  # Start timing
-                loss += gradient_flow.LCVSW(X.to(device), Y.to(device), L=args.L)
+                theta_twd, intercept_twd = generate_trees_frames(
+                    ntrees=int(args.L / args.n_lines),
+                    nlines=args.n_lines,
+                    d=X.shape[1],
+                    mean=mean_X,
+                    std=args.std,
+                    gen_mode='gaussian_orthogonal',
+                    device='cuda'
+                )  # distance_based
+                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="ball", lambda_=args.lambda_, p_noise=args.p_noise, p_agg=args.p_agg)
                 end_time = time.time()  # End timing
                 # print(f"Time taken for LCVSW: {end_time - start_time:.4f} seconds")
 
@@ -149,29 +168,11 @@ for k, title in enumerate(titles):
                 # print(f"Time taken for SWGG_CP: {end_time - start_time:.4f} seconds")
             elif k == 6:
                 start_time = time.time()  # Start timing
-                theta_twd, intercept_twd = generate_trees_frames(
-                    ntrees=int(args.L / args.n_lines),
-                    nlines=args.n_lines,
-                    d=X.shape[1],
-                    mean=mean_X,
-                    std=args.std,
-                    gen_mode='gaussian_raw',
-                    device='cuda'
-                )  # distance_based
-                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="interval", lambda_=args.lambda_, p_agg=args.p_agg)
-                end_time = time.time()  # End timing
+                loss += gsw_res.sw(X.to(device), Y, theta=None)
+                end_time = time.time()  # End timing                
             elif k == 7:
                 start_time = time.time()  # Start timing
-                theta_twd, intercept_twd = generate_trees_frames(
-                    ntrees=int(args.L / args.n_lines),
-                    nlines=args.n_lines,
-                    d=X.shape[1],
-                    mean=mean_X,
-                    std=args.std,
-                    gen_mode='gaussian_raw',
-                    device='cuda'
-                )  # distance_based
-                loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="ball", lambda_=args.lambda_, p_noise=args.p_noise, p_agg=args.p_agg)
+                loss += gradient_flow.LCVSW(X.to(device), Y.to(device), L=args.L)
                 end_time = time.time()  # End timing
             optimizer.zero_grad()
             loss.backward()
