@@ -98,7 +98,7 @@ class SWTM:
                     ot_loss = self.wae.sbtsw_loss(z, prior, p=self.p, delta=self.delta, ntrees=self.n_trees, nlines=nlines)
                 elif self.loss_type == "osbtsw":
                     ot_loss = self.wae.osbtsw_loss(z, prior, p=self.p, delta=self.delta, ntrees=self.n_trees, nlines=nlines, n_function=self.n_function, p_agg=self.p_agg)
-                elif self.loss_type == "nstsw":
+                elif self.loss_type == "ntsw":
                     ot_loss = self.wae.nstsw_loss(z, prior, p=self.p, delta=self.delta, ntrees=self.n_trees, nlines=nlines, noisy_mode=self.noisy_mode, lambda_=self.lambda_, p_noise=self.p_noise, p_agg=self.p_agg)
                 s = torch.sum(bows)/len(bows)
                 lamb = (5.0*s*torch.log(torch.tensor(1.0 *bows.shape[-1]))/torch.log(torch.tensor(2.0)))
