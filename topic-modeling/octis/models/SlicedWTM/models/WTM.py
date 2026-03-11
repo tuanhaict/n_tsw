@@ -103,7 +103,6 @@ class SWTM:
                 s = torch.sum(bows)/len(bows)
                 lamb = (5.0*s*torch.log(torch.tensor(1.0 *bows.shape[-1]))/torch.log(torch.tensor(2.0)))
                 ot_loss = ot_loss * lamb
-                print("Hello")
                 loss = rec_loss + ot_loss * self.beta
 
                 loss.backward()

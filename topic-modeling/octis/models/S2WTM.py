@@ -93,7 +93,7 @@ class S2WTM(AbstractModel):
             
             self.model.train(train_data=x_train,
                              test_data=None,
-                             verbose=False,
+                             verbose=True,
                              topK=10,
                              )
             
