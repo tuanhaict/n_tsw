@@ -169,7 +169,7 @@ def main():
 
             if output is None:
                 # Train
-                if cfg.loss_type in ['sbstsw', 'osbstsw', 'nstsw']:
+                if cfg.loss_type in ['sbstsw', 'osbstsw', 'nstsw', 'stsw']:
                     model = S2WTM(
                         dropout=cfg.dropout,
                         batch_size=cfg.batch_size,

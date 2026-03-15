@@ -141,6 +141,11 @@ class S2WTM:
                                                           lambda_=self.lambda_,
                                                           p_noise=self.p_noise,
                                                           p_agg=self.p_agg)
+                elif self.loss_type=='stsw':
+                    ot_loss = self.wae.sp_tree_slied_cost(theta_q, theta_prior, n_trees=self.n_trees,
+                                                          n_lines=self.num_projections//self.n_trees,
+                                                          delta=self.delta,
+                                                          device=self.device, p=1)
                 else:
                     raise Exception('The following OT-based loss: {} not implemented'.format(self.loss_type))
 
