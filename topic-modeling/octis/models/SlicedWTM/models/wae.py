@@ -19,7 +19,7 @@ from octis.models.osb_tsw import OSb_TSConcurrentLines, osb_generate_trees_frame
 from octis.models.n_tsw import NTWConcurrentLines, generate_trees_frames as ntw_generate_trees_frames
 from octis.models.tsw.tsw import TSW
 from octis.models.TWConcurrentLines import TWConcurrentLines, generate_trees_frames
-
+from sw_variants import RPSW, EBRPSW, DSW, SW
 # WAE model
 class WAE(nn.Module):
     def __init__(self, encode_dims=[2000, 1024, 512, 20], decode_dims=[20, 1024, 2000], dropout=0.0, nonlin='relu'):
@@ -140,7 +140,6 @@ class WAE(nn.Module):
         TW_obj = TWConcurrentLines(ntrees=ntrees, mass_division='distance_based', delta=delta, p=p)
         theta, intercept = generate_trees_frames(ntrees, nlines, dn, intercept_mode="geometric_median", gen_mode="random_path", X=z, Y=prior)
         return TW_obj(z, prior, theta, intercept)
-
     def rptsw_loss_root(self, z, prior, p=2, delta=1, ntrees=100, nlines=50):
         dn = z.shape[-1]
         TW_obj = TWConcurrentLines(ntrees=ntrees, mass_division='distance_based', delta=delta, p=p)
