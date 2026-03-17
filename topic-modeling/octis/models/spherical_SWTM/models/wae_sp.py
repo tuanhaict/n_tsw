@@ -10,6 +10,8 @@ from octis.models.tsw.tsw import SphericalTSW
 from octis.models.sb_tsw import SbSTSD 
 from octis.models.osb_tsw import OSbSTSD
 from octis.models.n_tsw import NSTSD
+from octis.models.s3w import *
+from octis.models.lssot import LSSOT
 # WAE model
 class WAE(nn.Module):
     def __init__(self,
@@ -753,3 +755,47 @@ class WAE(nn.Module):
         Xps = (torch.atan2(-Xps[:,:,1], -Xps[:,:,0])+np.pi)/(2*np.pi)
 
         return torch.mean(self.w2_unif_circle(Xps))
+    def s3wd(self, X, Y, p, h=None, n_projs=1000, n_rotations=30, pool_size=30, device='cpu', eps=1e-6):
+        if h is None: h = hStar()
+        n = X.shape[-1]
+
+        assert pool_size >= n_rotations
+
+        rotation_pool = RotationPool.get(n, pool_size, device=device)
+
+        indices = torch.randperm(rotation_pool.size(0))[:n_rotations]
+        rot_matrices = rotation_pool[indices]
+
+        X = X.to(device)
+        Y = Y.to(device)
+        
+        X_rot = (rot_matrices @ X.T).permute(0, 2, 1)
+        Y_rot = (rot_matrices @ Y.T).permute(0, 2, 1)
+
+        X_eps = epsilon_projection(X_rot, eps)
+        Y_eps = epsilon_projection(Y_rot, eps)
+
+        X_sp = get_stereo_proj_torch(X_eps).to(device)
+        Y_sp = get_stereo_proj_torch(Y_eps).to(device)
+
+        s1_h = h(X_sp).double()
+        s2_h = h(Y_sp).double()
+
+        projs = generate_rand_projs(s1_h.shape[-1], n_projs).to(device)
+        s1_h_rp, s2_h_rp = s1_h @ projs.T, s2_h @ projs.T
+
+        d = torch.abs(torch.sort(s1_h_rp.transpose(-2, -1), dim=-1).values - 
+                    torch.sort(s2_h_rp.transpose(-2, -1), dim=-1).values)
+
+        wd = d.pow(p).sum(dim=-1).mean(dim=-1)
+        return wd.mean()
+
+    def lssot(self, x, y, p, num_projections, device):
+        n, d = x.shape
+        ot = LSSOT(num_projections=num_projections, ref_size=n, device=device)
+        weight = torch.ones(n, device=device)/n/2
+        ot_loss = ot(x, weight, y, weight)
+        return ot_loss
+def generate_rand_projs(dim, n_projs=1000):
+    projs = torch.randn(n_projs, dim).to(torch.float64)
+    return projs / torch.norm(projs, p=2, dim=1, keepdim=True)

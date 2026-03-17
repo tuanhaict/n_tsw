@@ -148,6 +148,10 @@ class S2WTM:
                                                           device=self.device, p=1)
                 elif self.loss_type == "ssw":
                     ot_loss = self.wae.sp_swd_loss(theta_q, theta_prior, num_projections=self.num_projections, device=self.device, p=self.p)
+                elif self.loss_type=='s3w':
+                    ot_loss = self.wae.s3wd(theta_q, theta_prior, self.p, n_projs=self.num_projections, device=self.device)
+                elif self.loss_type=='lssot':
+                    ot_loss = self.wae.lssot(theta_q, theta_prior, self.p, num_projections=self.num_projections, device=self.device)
                 else:
                     raise Exception('The following OT-based loss: {} not implemented'.format(self.loss_type))
 
