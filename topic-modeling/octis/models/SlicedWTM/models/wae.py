@@ -19,7 +19,7 @@ from octis.models.osb_tsw import OSb_TSConcurrentLines, osb_generate_trees_frame
 from octis.models.n_tsw import NTWConcurrentLines, generate_trees_frames as ntw_generate_trees_frames
 from octis.models.tsw.tsw import TSW
 from octis.models.TWConcurrentLines import TWConcurrentLines, generate_trees_frames
-from sw_variants import RPSW, EBRPSW, DSW, SW
+from octis.models.sw_variants import RPSW, EBRPSW, DSW
 # WAE model
 class WAE(nn.Module):
     def __init__(self, encode_dims=[2000, 1024, 512, 20], decode_dims=[20, 1024, 2000], dropout=0.0, nonlin='relu'):
