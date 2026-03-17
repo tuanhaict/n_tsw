@@ -146,6 +146,8 @@ class S2WTM:
                                                           n_lines=self.num_projections//self.n_trees,
                                                           delta=self.delta,
                                                           device=self.device, p=1)
+                elif self.loss_type == "ssw":
+                    ot_loss = self.wae.sp_swd_loss(theta_q, theta_prior, num_projections=self.num_projections, device=self.device, p=self.p)
                 else:
                     raise Exception('The following OT-based loss: {} not implemented'.format(self.loss_type))
 
