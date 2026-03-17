@@ -105,11 +105,11 @@ class SWTM:
                 elif self.loss_type == "sw":
                     ot_loss = self.wae.sw_loss(z, prior, p=self.p, nlines=nlines)
                 elif self.loss_type == "rpsw":
-                    ot_loss = self.wae.rpsw_loss(z, prior, L=nlines, p=self.p, device=self.device, kappa=self.kappa)
+                    ot_loss = self.wae.rpsw_loss(z, prior, nlines=nlines, p=self.p, kappa=self.kappa)
                 elif self.loss_type == "ebrpsw":
-                    ot_loss = self.wae.ebrpsw_loss(z, prior, L=nlines, p=self.p, device=self.device, kappa=self.kappa)
+                    ot_loss = self.wae.ebrpsw_loss(z, prior, nlines=nlines, p=self.p, kappa=self.kappa)
                 elif self.loss_type == "dsw":
-                    ot_loss = self.wae.dsw_loss(z, prior, L=nlines, p=self.p, device=self.device, kappa=self.kappa)
+                    ot_loss = self.wae.dsw_loss(z, prior, nlines=nlines, p=self.p, kappa=self.kappa)
                 s = torch.sum(bows)/len(bows)
                 lamb = (5.0*s*torch.log(torch.tensor(1.0 *bows.shape[-1]))/torch.log(torch.tensor(2.0)))
                 ot_loss = ot_loss * lamb
