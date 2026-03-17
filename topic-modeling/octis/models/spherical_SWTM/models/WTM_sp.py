@@ -146,6 +146,11 @@ class S2WTM:
                                                           n_lines=self.num_projections//self.n_trees,
                                                           delta=self.delta,
                                                           device=self.device, p=1)
+                elif self.loss_type=='sph_sw_uni':
+                    ot_loss = self.wae.sp_swd_unif_loss(theta_q,
+                                                        num_projections=self.num_projections,
+                                                        device=self.device
+                                                        )
                 elif self.loss_type == "ssw":
                     ot_loss = self.wae.sp_swd_loss(theta_q, theta_prior, num_projections=self.num_projections, device=self.device, p=self.p)
                 elif self.loss_type=='s3w':
