@@ -138,7 +138,7 @@ for k, title in enumerate(titles):
                     d=X.shape[1],
                     mean=mean_X,
                     std=args.std,
-                    gen_mode='gaussian_orthogonal',
+                    gen_mode='gaussian_raw',
                     device='cuda'
                 )  # orthogonal
                 loss += gradient_flow.TWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta)
@@ -153,7 +153,7 @@ for k, title in enumerate(titles):
                     d=X.shape[1],
                     mean=mean_X,
                     std=args.std,
-                    gen_mode='gaussian_orthogonal',
+                    gen_mode='gaussian_raw',
                     device='cuda'
                 )  # distance_based
                 loss += gradient_flow.NTWD(X=X.to(device), Y=Y, theta=theta_twd, intercept=intercept_twd, mass_division='distance_based', p=args.p, delta=args.delta, noisy_mode="ball", lambda_=args.lambda_, p_noise=args.p_noise, p_agg=args.p_agg)
