@@ -90,7 +90,7 @@ if __name__ == "__main__":
         d_args = {'p': args.p, 'ntrees': args.ntrees, 'nlines': args.nlines, 'delta': args.delta, 'device': device}
     elif args.d_func == "nstsw":
         d_func = ntwd.nsts
-        d_args = {'p': args.p, 'ntrees': args.ntrees, 'nlines': args.nlines, 'delta': args.delta, 'device': device, 'noise_mode': args.noisy_mode, 'lambda_': args.lambda_, 'p_noise': args.p_noise, 'p_agg': args.p_agg}
+        d_args = {'p': args.p, 'ntrees': args.ntrees, 'nlines': args.nlines, 'delta': args.delta, 'device': device, 'noisy_mode': args.noisy_mode, 'lambda_': args.lambda_, 'p_noise': args.p_noise, 'p_agg': args.p_agg}
     elif args.d_func == "sbsts":
         d_func = sbstsd.sbsts
         d_args = {'p': args.p, 'ntrees': args.ntrees, 'nlines': args.nlines, 'delta': args.delta, 'device': device}
