@@ -5,7 +5,7 @@ from methods.n_functions import ExpNFunction, ExpSquaredNFunction, LinearNFuncti
 from utils.func import transform
 
 class OSbSTSD():
-    def __init__(self, ntrees=200, nlines=5, p=2, delta=2, device="cuda", type="normal", n_function="power"):
+    def __init__(self, ntrees=200, nlines=5, p=2, delta=2, device="cuda", type="normal", n_function="power", p_agg=2):
         """
         Class for computing the TW distance between two point clouds
         Args:
@@ -210,8 +210,8 @@ def unif_hypersphere(shape, device):
     samples = F.normalize(samples, p=2, dim=-1)
     return samples
 
-def osbsts(X, Y, ntrees=250, nlines=4, p=2, delta=2, device='cuda', type='normal', n_function="power"):
-    TW_obj = OSbSTSD(ntrees=ntrees, nlines=nlines, p=p, delta=delta, device=device, type=type, n_function=n_function)
+def osbsts(X, Y, ntrees=250, nlines=4, p=2, delta=2, device='cuda', type='normal', n_function="power", p_agg =2):
+    TW_obj = OSbSTSD(ntrees=ntrees, nlines=nlines, p=p, delta=delta, device=device, type=type, n_function=n_function, p_agg=p_agg)
     stswd = TW_obj(X, Y)
     return stswd
 
