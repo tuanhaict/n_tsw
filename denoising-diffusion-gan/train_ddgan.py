@@ -601,7 +601,7 @@ def train(rank, args):
                     
                     torch.save(content, os.path.join(exp_path, 'content.pth'))
                 
-            if epoch % args.save_ckpt_every == 0:
+            if epoch > 0 and epoch % args.save_ckpt_every == 0:
                 if args.use_ema:
                     optimizerG.swap_parameters_with_ema(store_params_in_ema=True)
                     
