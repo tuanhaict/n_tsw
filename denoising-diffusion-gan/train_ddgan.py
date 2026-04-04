@@ -9,9 +9,8 @@
 import argparse
 import torch
 import numpy as np
-import time
+
 import os
-import random
 
 import torch.distributed
 import torch.nn as nn
@@ -20,19 +19,17 @@ import torch.optim as optim
 import torchvision
 
 import torchvision.transforms as transforms
-from torchvision.datasets import CIFAR10, MNIST
-from torch.utils.data import Subset, ConcatDataset
-
+from torchvision.datasets import CIFAR10
 from power_spherical import PowerSpherical
 import torch.multiprocessing as mp
 import torch.distributed as dist
 import shutil
 import time
-import math
 
 import wandb
-from TW_concurrent_lines import TWConcurrentLines, generate_trees_frames
-
+from db_tsw.db_tsw import TWConcurrentLines
+from db_tsw.utils import generate_trees_frames
+from n_tsw import NTWConcurrentLines
 def copy_source(file, output_dir):
     shutil.copyfile(file, os.path.join(output_dir, os.path.basename(file)))
             
@@ -192,167 +189,7 @@ def sample_from_model(coefficients, generator, n_time, x_init, T, opt):
     return x
 
 #%%
-
-
-def create_cifar10_with_mnist_mix(mnist_mix_percentage=0.0, seed=42):
-    """
-    Creates a dataset containing a mix of CIFAR-10 and MNIST samples, keeping
-    the original function signature.
-
-    The parameter `mnist_mix_percentage` is interpreted as the desired
-    percentage of *MNIST* samples in the final dataset. The remaining
-    percentage will be CIFAR-10 samples.
-
-    The total number of samples in the returned dataset will be equal to
-    the number of samples in the original CIFAR-10 training set (50,000).
-
-    Args:
-        mnist_mix_percentage (float): The desired percentage of *MNIST* samples
-                                      in the final dataset (0.0 to 100.0).
-                                      Defaults to 0.0 (100% CIFAR-10).
-        seed (int): Random seed for reproducibility of subset selection.
-
-    Returns:
-        torch.utils.data.Dataset: The combined dataset meeting the target percentage.
-                                  Returns None if mnist_mix_percentage is invalid or
-                                  data loading fails.
-    """
-    if not 0.0 <= mnist_mix_percentage <= 100.0:
-        print(f"Error: mnist_mix_percentage must be between 0.0 and 100.0, got {mnist_mix_percentage}")
-        # Or raise ValueError("mnist_mix_percentage must be between 0.0 and 100.0")
-        return None
-
-    # Calculate the target CIFAR percentage based on the MNIST percentage input
-    target_cifar_percentage = 100.0 - mnist_mix_percentage
-
-    # --- CIFAR-10 transforms ---
-    cifar_transform = transforms.Compose([
-        transforms.Resize(32),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    # --- Load CIFAR-10 ---
-    try:
-        cifar_train = CIFAR10(
-            root='./data',
-            train=True,
-            transform=cifar_transform,
-            download=True
-        )
-    except Exception as e:
-        print(f"Error loading or downloading CIFAR-10: {e}")
-        return None
-    cifar_total_size = len(cifar_train) # Should be 50,000
-
-    # Define the target total size for the final dataset
-    final_dataset_size = cifar_total_size
-
-    # --- Calculate the number of samples needed from each dataset ---
-    # Use the derived target_cifar_percentage
-    num_cifar_samples = int(round(final_dataset_size * (target_cifar_percentage / 100.0)))
-    # num_mnist_samples is the remainder, which also corresponds to mnist_mix_percentage
-    num_mnist_samples = final_dataset_size - num_cifar_samples
-    # As a check: num_mnist_samples_check = int(round(final_dataset_size * (mnist_mix_percentage / 100.0)))
-    # print(f"Check: Num MNIST samples based on input: {num_mnist_samples_check}") # Should match num_mnist_samples
-
-    # --- Handle edge cases cleanly ---
-    # If only CIFAR is needed (mnist_mix_percentage == 0):
-    if num_mnist_samples <= 0:
-        if num_cifar_samples == cifar_total_size:
-             # Just return the original dataset if we need all of it
-             print(f"Creating dataset with 0% MNIST ({num_mnist_samples} samples) -> 100% CIFAR-10 ({num_cifar_samples} samples).")
-             return cifar_train
-        else:
-             # Create a subset of CIFAR-10 (this case shouldn't happen if num_mnist_samples <= 0)
-             cifar_indices = list(range(cifar_total_size))
-             random.Random(seed).shuffle(cifar_indices)
-             cifar_subset_indices = cifar_indices[:num_cifar_samples]
-             return Subset(cifar_train, cifar_subset_indices)
-
-    # If MNIST is needed (mnist_mix_percentage > 0):
-    # --- MNIST transforms ---
-    mnist_transform = transforms.Compose([
-        transforms.Resize(32),
-        transforms.Grayscale(num_output_channels=3),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    # --- Load MNIST ---
-    try:
-        mnist_train = MNIST(
-            root='./data',
-            train=True,
-            transform=mnist_transform,
-            download=True
-        )
-    except Exception as e:
-        print(f"Error loading or downloading MNIST: {e}")
-        return None
-    mnist_total_size = len(mnist_train) # Should be 60,000
-
-    # Check if we have enough MNIST samples
-    if num_mnist_samples > mnist_total_size:
-        print(f"Warning: Requested {num_mnist_samples} MNIST samples ({mnist_mix_percentage}%), but only {mnist_total_size} are available.")
-        print(f"Adjusting: Using all {mnist_total_size} MNIST samples.")
-        num_mnist_samples = mnist_total_size
-        # Recalculate CIFAR samples to keep the total size fixed
-        num_cifar_samples = final_dataset_size - num_mnist_samples
-        num_cifar_samples = max(0, num_cifar_samples) # Ensure non-negative
-        actual_mnist_percentage = (num_mnist_samples / final_dataset_size) * 100 if final_dataset_size > 0 else 0
-        print(f"The final dataset will have {num_cifar_samples} CIFAR and {num_mnist_samples} MNIST samples.")
-        print(f"Actual MNIST percentage will be approximately {actual_mnist_percentage:.2f}%")
-
-
-    print(f"Creating dataset with {mnist_mix_percentage}% MNIST ({num_mnist_samples} samples) -> {target_cifar_percentage}% CIFAR-10 ({num_cifar_samples} samples).")
-
-    # --- Create CIFAR-10 subset ---
-    cifar_subset = None
-    if num_cifar_samples > 0:
-        cifar_indices = list(range(cifar_total_size))
-        rng_cifar = random.Random(seed)
-        rng_cifar.shuffle(cifar_indices)
-        cifar_subset_indices = cifar_indices[:num_cifar_samples]
-        cifar_subset = Subset(cifar_train, cifar_subset_indices)
-    elif num_cifar_samples == 0:
-        print("Using 0 CIFAR samples.")
-
-
-    # --- Create MNIST subset ---
-    mnist_subset = None
-    if num_mnist_samples > 0:
-        mnist_indices = list(range(mnist_total_size))
-        rng_mnist = random.Random(seed + 1) # Offset seed
-        rng_mnist.shuffle(mnist_indices)
-        mnist_subset_indices = mnist_indices[:num_mnist_samples]
-        mnist_subset = Subset(mnist_train, mnist_subset_indices)
-
-    # --- Combine the subsets ---
-    datasets_to_concat = []
-    if cifar_subset:
-        datasets_to_concat.append(cifar_subset)
-    if mnist_subset:
-        datasets_to_concat.append(mnist_subset)
-
-    if not datasets_to_concat:
-         print("Warning: Both subsets ended up empty.")
-         return None
-
-    combined_dataset = ConcatDataset(datasets_to_concat)
-
-    # --- Verification Log (Optional) ---
-    final_len = len(combined_dataset)
-    actual_cifar_len = len(cifar_subset) if cifar_subset else 0
-    actual_mnist_len = len(mnist_subset) if mnist_subset else 0
-    actual_mnist_perc = (actual_mnist_len / final_len) * 100 if final_len > 0 else 0
-    print(f"Created dataset with {final_len} total samples.")
-    print(f" - CIFAR samples: {actual_cifar_len}")
-    print(f" - MNIST samples: {actual_mnist_len}")
-
-    return combined_dataset
-
+            
 def train(rank, args):
     def rand_projections(dim, num_projections=1000,device='cpu'):
         projections = torch.randn((num_projections, dim),device=device)
@@ -449,12 +286,18 @@ def train(rank, args):
         wasserstein_distances =  wasserstein_distances.view(1,L)
         weights = torch.softmax(wasserstein_distances,dim=1)
         sw = torch.sum(weights*wasserstein_distances,dim=1).mean()
-        return  torch.pow(sw,1./p)    
+        return  torch.pow(sw,1./p)
+    
+    def CLTWD(X, Y, theta, intercept, TWD_obj):
+        return TWD_obj(X, Y, theta, intercept)
+    
+    def NTWD(X, Y, theta, intercept, NTWD_obj):
+        return NTWD_obj(X, Y, theta, intercept)
+        
     
     from score_sde.models.discriminator import Discriminator_small
     from score_sde.models.ncsnpp_generator_adagn import NCSNpp
     from EMA import EMA
-    from pytorch_fid.fid_score import calculate_fid_given_paths
     
     if rank == 0:
         run_name = args.wandb_run_name or args.exp
@@ -473,7 +316,11 @@ def train(rank, args):
     nz = args.nz #latent dimension
     
     if args.dataset == 'cifar10':
-        dataset = create_cifar10_with_mnist_mix(args.mnist_mix_percentage)
+        dataset = CIFAR10('./data', train=True, transform=transforms.Compose([
+                        transforms.Resize(32),
+                        transforms.RandomHorizontalFlip(),
+                        transforms.ToTensor(),
+                        transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))]), download=True)
         # calculate mean of pixel values of the dataset
     else:
         raise NotImplementedError('Dataset not implemented')
@@ -544,7 +391,6 @@ def train(rank, args):
                   .format(checkpoint['epoch']))
     else:
         global_step, epoch, init_epoch = 0, 0, 0
-    
     if args.dataset == 'cifar10':
         x_t_1 = torch.randn((64,3,32,32),device=device)
     print(args.dataset)
@@ -558,25 +404,33 @@ def train(rank, args):
             pixel_mean += x.mean()
             num_sample += x.shape[0]
             d = x.shape[1] * x.shape[2] * x.shape[3] + 1
-        pixel_mean = pixel_mean / num_sample
             
-        pixel_norm = 0
+        pixel_mean = pixel_mean / num_sample
+        TWD_obj = torch.compile(TWConcurrentLines(p=2, delta=args.twd_delta, mass_division='distance_based', device=device))
+    elif args.loss == 'n_tsw':
+        # calculate mean of pixel values of the dataset
+        pixel_mean = 0
+        num_sample = 0
+        d = 0
         for i, (x, _) in enumerate(data_loader):
-            batch_pixel_norm = (x.view(x.shape[0], -1) ** 2).sum(dim=1).sqrt().sum()  # Sum norms for the batch
-            pixel_norm += batch_pixel_norm
-        pixel_norm = pixel_norm / num_sample
-        torch.set_float32_matmul_precision('high')
-        TWD_obj = torch.compile(TWConcurrentLines(ntrees=args.T, nlines=args.L, d=d, p=args.twd_p, delta=args.twd_delta, pow_beta=args.twd_pow_beta, 
-                    mass_division='distance_based', ftype=args.twd_ftype, radius=args.twd_radius,
-                    device=device))
-        
+            pixel_mean += x.mean()
+            num_sample += x.shape[0]
+            d = x.shape[1] * x.shape[2] * x.shape[3] + 1
+            
+        pixel_mean = pixel_mean / num_sample
+        NTWD_obj = torch.compile(NTWConcurrentLines(delta=args.twd_delta, mass_division='distance_based', device=device, noisy_mode=args.noisy_mode, lambda_=args.lambda_, p_noise=args.p_noise, p_agg=args.p_agg))   
     start_time = time.time()
     for epoch in range(init_epoch, args.num_epoch+1):
         if rank == 0:
             print(f"Epoch {epoch - 1}: {time.time() - start_time}s")
             start_time = time.time()
         train_sampler.set_epoch(epoch)
-        
+        if args.loss == 'cltwd':
+            theta, intercept = generate_trees_frames(ntrees=args.T, nlines=args.L, d=d, 
+                                                     mean=pixel_mean, std=args.twd_std, device=device, gen_mode=args.twd_gen_mode)
+        elif args.loss == 'n_tsw':
+            theta, intercept = generate_trees_frames(ntrees=args.T, nlines=args.L, d=d, 
+                                                     mean=pixel_mean, std=args.twd_std, device=device, gen_mode=args.twd_gen_mode)
         for iteration, (x, y) in enumerate(data_loader):
             for p in netD.parameters():  
                 p.requires_grad = True  
@@ -628,9 +482,7 @@ def train(rank, args):
             latent_z = torch.randn(batch_size, nz, device=device)
             
          
-            with torch.no_grad():
-                x_0_predict = netG(x_tp1.detach(), t, latent_z)
-            
+            x_0_predict = netG(x_tp1.detach(), t, latent_z)
             x_pos_sample = sample_posterior(pos_coeff, x_0_predict, x_tp1, t)
             
             output,_ = netD(x_pos_sample, t, x_tp1.detach())
@@ -656,17 +508,19 @@ def train(rank, args):
             D_real,real_feature = netD(x_t, t, x_tp1.detach())
             
             #errD_real = F.softplus(-D_real.view(-1))
-            latent_z = torch.randn(batch_size, nz, device=device)
+            
+            latent_z = torch.randn(batch_size, nz,device=device)
            
             x_0_predict = netG(x_tp1.detach(), t, latent_z)
             x_pos_sample = sample_posterior(pos_coeff, x_0_predict, x_tp1, t)
             
-            D_fake,fake_feature = netD(x_pos_sample, t, x_tp1.detach())
-            if args.dataset=='cifar10':
-                X = torch.cat([x_pos_sample.view(x_pos_sample.shape[0],-1),D_fake.view(D_fake.shape[0],-1)],dim=1)
-                Y = torch.cat([x_t.view(x_t.shape[0],-1),D_real.view(D_real.shape[0],-1)],dim=1)
+            output,fake_feature = netD(x_pos_sample, t, x_tp1.detach())
 
-            index = batch_size // 2
+            if args.dataset=='cifar10':
+                X = torch.cat([x_t.view(x_t.shape[0],-1),D_real.view(D_real.shape[0],-1)],dim=1)
+                Y = torch.cat([x_pos_sample.view(x_pos_sample.shape[0],-1),output.view(output.shape[0],-1)],dim=1)
+            index = int(X.shape[0]/2)
+
             X1,X2,Y1,Y2 = X[:index],X[index:],Y[:index],Y[index:]
             n_min = np.min([X1.shape[0],X2.shape[0]])
             X1,X2,Y1,Y2 = X1[:n_min],X2[:n_min],Y1[:n_min],Y2[:n_min]
@@ -692,19 +546,9 @@ def train(rank, args):
                 errG = F.softplus(-output.view(-1))
                 errG = errG.mean()
             elif(args.loss=='cltwd'):
-                w=((args.num_epoch-epoch-1)/(args.num_epoch-1))**args.beta
-                kappa = args.kappa*w + args.kappa2*(1-w)
-                theta, intercept = generate_trees_frames(ntrees=args.T, nlines=args.L, d=TWD_obj.dtheta, 
-                                                    mean=pixel_mean, std=args.twd_std,
-                                                    intercept_mode=args.twd_intercept_mode,
-                                                    gen_mode=args.twd_gen_mode, 
-                                                    X=X, Y=Y, kappa=kappa)
-                errG = 2 * TWD_obj(X, Y, theta, intercept) \
-                        - TWD_obj(X1, X2, theta, intercept) \
-                        - TWD_obj(Y1, Y2, theta, intercept)
-                    
-
-            errG.backward()
+                errG = 2*CLTWD(X,Y,theta,intercept,TWD_obj) - CLTWD(X1,X2,theta,intercept,TWD_obj) - CLTWD(Y1,Y2,theta,intercept,TWD_obj)
+            elif(args.loss=='n_tsw'):
+                errG = 2*NTWD(X,Y,theta,intercept,NTWD_obj) - NTWD(X1,X2,theta,intercept,NTWD_obj) - NTWD(Y1,Y2,theta,intercept,NTWD_obj)
             optimizerG.step()
                 
             global_step += 1
@@ -756,45 +600,7 @@ def train(rank, args):
                                'optimizerD': optimizerD.state_dict(), 'schedulerD': schedulerD.state_dict()}
                     
                     torch.save(content, os.path.join(exp_path, 'content.pth'))
-
-            if args.eval:
-                if epoch % args.eval_every == 0:
-                    print('Evaluation')
-                    start_time = time.time()
-                    if args.dataset == 'cifar10':
-                        real_img_dir = 'pytorch_fid/cifar10_train_stat.npy'
-                    else:
-                        real_img_dir = args.real_img_dir
-
-                    to_range_0_1 = lambda x: (x + 1.) / 2.
-
-                    netG.eval()
-                    iters_needed = 50000 //args.eval_batch_size
-                    save_dir = "./generated_samples/{}/{}".format(args.dataset, args.exp)
-                    
-                    if not os.path.exists(save_dir):
-                        os.makedirs(save_dir)
-
-                    ## compute fid 
-                    for i in range(iters_needed):
-                        with torch.no_grad():
-                            x_t_1_eval = torch.randn(args.eval_batch_size, args.num_channels,args.image_size, args.image_size).to(device)
-                            fake_sample_eval = sample_from_model(pos_coeff, netG, args.num_timesteps, x_t_1_eval, T, args)
-                            
-                            fake_sample_eval = to_range_0_1(fake_sample_eval)
-                            for j, x in enumerate(fake_sample_eval):
-                                idx = i * args.eval_batch_size + j 
-                                torchvision.utils.save_image(x, '{}/{}.jpg'.format(save_dir, idx))
-                    
-                    paths = [save_dir, real_img_dir]
-                    kwargs = {'batch_size': 100, 'device': device, 'dims': 2048}
-                    fid = calculate_fid_given_paths(paths=paths, **kwargs)
-                    wandb.log({'FID': fid, 'train/epoch': epoch})
-                    end_time = time.time()
-                    print('{}/{}: FID = {}'.format(args.exp, epoch, fid))
-                    print('Evaluation time: ', end_time - start_time)
-                    netG.train()
-
+                
             if epoch % args.save_ckpt_every == 0:
                 if args.use_ema:
                     optimizerG.swap_parameters_with_ema(store_params_in_ema=True)
@@ -881,15 +687,12 @@ if __name__ == '__main__':
     #geenrator and training
     parser.add_argument('--exp', default='experiment_cifar_default', help='name of experiment')
     parser.add_argument('--dataset', default='cifar10', help='name of dataset')
-    parser.add_argument('--mnist_mix_percentage', type=float, default=0.0,
-                            help='Integer or float from 0 to 100 indicating percent of MNIST to mix into dataset')    
     parser.add_argument('--nz', type=int, default=100)
     parser.add_argument('--num_timesteps', type=int, default=4)
 
     parser.add_argument('--z_emb_dim', type=int, default=256)
     parser.add_argument('--t_emb_dim', type=int, default=256)
     parser.add_argument('--batch_size', type=int, default=128, help='input batch size')
-    parser.add_argument('--unbalanced_batch_size', type=int, default=128, help='unbalanced input batch size')
     parser.add_argument('--num_epoch', type=int, default=1200)
     parser.add_argument('--ngf', type=int, default=64)
 
@@ -910,15 +713,9 @@ if __name__ == '__main__':
                         help='lazy regulariation.')
 
     parser.add_argument('--save_content', action='store_true',default=False)
-    parser.add_argument('--save_content_every', type=int, default=25, help='save content for resuming every x epochs')
+    parser.add_argument('--save_content_every', type=int, default=50, help='save content for resuming every x epochs')
     parser.add_argument('--save_ckpt_every', type=int, default=25, help='save ckpt every x epochs')
    
-    ###evaluation
-    parser.add_argument('--eval', action='store_true',default=False)
-    parser.add_argument('--eval_every', type=int, default=50, help='eval fid score for every x epochs')
-    parser.add_argument('--real_img_dir', default='./pytorch_fid/cifar10_train_stat.npy', help='directory to real images for FID computation')
-    parser.add_argument('--eval_batch_size', type=int, default=200, help='sample generating batch size')
-
     ###optimal transport
     parser.add_argument('--loss', type=str, default='sw',
                         help='sw')
@@ -926,32 +723,27 @@ if __name__ == '__main__':
                         help='Number of lines of each tree in CLTWD.')
     parser.add_argument('--T', type=int, default=100,
                         help='Number of trees in CLTWD.')
-    parser.add_argument('--twd_delta', type=float, default=1,
+    parser.add_argument('--twd_delta', type=int, default=1,
                         help='Softmax temperature term in CLTWD.')
     parser.add_argument('--kappa', type=float, default=100,
                         help='L')
-    parser.add_argument('--kappa2', type=float, default=1,
+    parser.add_argument('--kappa2', type=float, default=100,
                         help='L')
     parser.add_argument('--beta', type=float, default=10,
                         help='beta')
-    parser.add_argument('--twd_intercept_mode', type=str, 
-                        choices=["gaussian", "geometric_median"], 
-                        help='intercept generation mode, further information in `generate_tree_frames` method')
     parser.add_argument('--twd_gen_mode', type=str, 
-                        choices=["gaussian_raw", "gaussian_orthogonal", "random_path", "cluster_random_path", "cluster_random_path_v2"], 
+                        choices=["gaussian_raw", "gaussian_orthogonal"], 
                         help='tree generation mode, further information in `generate_tree_frames` method')
-    parser.add_argument('--twd_ftype', type=str, 
-                        choices=["linear", "circular", "pow", "circular_concentric"], default="linear")
     parser.add_argument('--twd_std', type=float, default=0.1, help="std of the tree generation")
-    parser.add_argument('--twd_radius', type=float, default=0.01, help="radius of the circular projection")
-    parser.add_argument('--twd_pow_beta', type=float, default=0.01, help="contribution between linear and pow")
-    parser.add_argument('--twd_p', type=float, default=1, help="p for the twd")
-
     # wandb-related parameters
     parser.add_argument('--wandb_project_name', type=str, default='twd', help='wandb project name')
     parser.add_argument('--wandb_entity', type=str, default='twd', help='wandb entity, username or team name')
     parser.add_argument('--wandb_run_name', type=str, default=None, 
                         help='wandb run name, if not specified, will be set to the current experiment name')
+    parser.add_argument('--noisy_mode', type=str, default=None)
+    parser.add_argument('--lambda_', type=float, default=0.0)
+    parser.add_argument('--p_noise', type=float, default=2.0)
+    parser.add_argument('--p_agg', type=float, default=1.0)
 
    
     args = parser.parse_args()
